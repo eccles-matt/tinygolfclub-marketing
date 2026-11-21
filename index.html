@@ -53,6 +53,14 @@ header nav a{text-decoration:none}
 .hero h1{font-size:clamp(46px,7.6vw,92px);color:var(--cream);font-weight:800}
 .hero .lead{font-size:clamp(17px,1.7vw,20px);max-width:32em;font-weight:500}
 .hero .ctas{display:flex;gap:12px;flex-wrap:wrap}
+@media (min-width:900px){.hero .copy{max-width:min(620px,52vw)}}
+.playhint{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:rgba(253,246,227,.92);border-radius:16px;padding:12px 16px;box-shadow:4px 4px 0 rgba(47,90,34,.3);font-size:15px;max-width:34em}
+.playhint span:nth-child(2){flex:1 1 220px}
+.playhint b{font-family:var(--head);font-size:17px;color:var(--deep)}
+.playhint .dot{width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 0 0 3px #cdee84,0 0 0 6px rgba(255,138,92,.55);flex:none;animation:ping 1.6s ease-out infinite}
+@keyframes ping{0%{box-shadow:0 0 0 3px #cdee84,0 0 0 4px rgba(255,138,92,.7)}100%{box-shadow:0 0 0 3px #cdee84,0 0 0 16px rgba(255,138,92,0)}}
+@media (prefers-reduced-motion:reduce){.playhint .dot{animation:none}}
+.playhint button{font:700 14px/1 var(--body);background:var(--deep);color:var(--cream);border:0;border-radius:10px;padding:10px 14px;cursor:pointer}
 
 .hud{position:fixed;z-index:3;top:calc(env(safe-area-inset-top,0px) + 12px);right:max(12px,env(safe-area-inset-right,0px));display:flex;gap:6px;pointer-events:none;transition:opacity .3s}
 .hud div{background:var(--cream);border-radius:12px;padding:6px 12px;box-shadow:3px 3px 0 rgba(47,90,34,.35)}
@@ -182,6 +190,7 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
       <h1 class="ls-grass">Your club, made tiny.</h1>
       <p class="lead">A cartoon minigolf game of your own course, for your members' phones. Putt your way down the page as you read, or just scroll.</p>
       <div class="ctas"><a class="btn coral" href="#contact">Book a chat</a><a class="btn cream" href="#clubhouse">See pricing</a></div>
+      <div class="playhint"><span class="dot" aria-hidden="true"></span><span><b>Have a hit.</b> This whole page is a playable par 5. Drag back from the ball and let go.</span><button type="button" id="teeoff">Tee off ↓</button></div>
     </div>
   </div>
 </section>
@@ -328,9 +337,12 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
     const doc = (el) => { const r = el.getBoundingClientRect(); return { l: r.left / Z, r: r.right / Z, t: (r.top + scrollY) / Z, b: (r.bottom + scrollY) / Z }; };
     const course = doc($('course')), W = VW / Z;
     const R = cards.map(doc);
-    const hw = VW < 700 ? 28 : 34;
     // the fairway's x for each card: the middle of the free side
-    const fx = R.map((c) => (c.l - course.l < course.r - c.r ? Math.min((c.r + W) / 2, c.r + (W - c.r) * 0.45, c.r + 210) : Math.max(c.l / 2, c.l - 210)));
+    const isLeft = (c) => c.l - course.l < course.r - c.r;
+    const freeW = Math.min(...R.map((c) => (isLeft(c) ? W - c.r : c.l)));
+    const hw = VW < 700 ? 28 : Math.max(34, Math.min(95, freeW * 0.3));
+    const k = hw / 34;
+    const fx = R.map((c) => (isLeft(c) ? (c.r + W) / 2 : c.l / 2));
     const pts = [];
     const hero = doc(document.querySelector('.hero .copy'));
     const tee = [fx[0], VW >= 900 ? hero.t + 40 : R[0].t + 40];
@@ -338,14 +350,14 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
     for (let k = 0; k < 4; k++) pts.push([fx[k], Math.max(R[k].t + 60, pts[pts.length - 1][1] + 20)], [fx[k], R[k].b + 10]);
     const gy = R[4].t + Math.max(90, (R[4].b - R[4].t) * 0.5);
     pts.push([fx[4], R[4].t - 20]);
-    const green = [fx[4], gy + 20, 56], cup = [fx[4] + 6, gy + 28, 9];
+    const green = [fx[4], gy + 20, Math.max(56, hw * 1.45)], cup = [fx[4] + 6 * k, gy + 28, 9];
     pts.push([fx[4], green[1] - 30]);
     const club = doc($('clubhouse'));
     const mid = (k) => (R[k].t + R[k].b) / 2, out = (k) => (fx[k] < W / 2 ? -1 : 1);
     const g = {
       W, pts, hw, green, cup, tee, R, club,
-      sand: [[fx[0] + out(0) * 12, mid(0) + 30, 90, 0.3], [fx[3] - out(3) * 10, mid(3) - 20, 90, 0.3], [fx[3] + out(3) * 12, mid(3) + 120, 90, 0.26], [green[0] - 36, green[1] + 26, -20, 0.3], [green[0] + 36, green[1] - 24, 30, 0.28]],
-      kick: { zone: { x: fx[1], y: mid(1) + 30, rx: hw - 4, ry: 34 }, roo: { x: fx[1] + out(1) * 16, y: mid(1) + 92 }, v: [0, -KICK_SPEED], awake: true, timer: 2, cool: 0, squash: 0, crouch: 0 },
+      sand: [[fx[0] + out(0) * 12 * k, mid(0) + 30, 90, 0.3 * k], [fx[3] - out(3) * 10 * k, mid(3) - 20, 90, 0.3 * k], [fx[3] + out(3) * 12 * k, mid(3) + 120, 90, 0.26 * k], [green[0] - 36 * k, green[1] + 26 * k, -20, 0.3 * k], [green[0] + 36 * k, green[1] - 24 * k, 30, 0.28 * k]],
+      kick: { zone: { x: fx[1], y: mid(1) + 30, rx: hw - 4, ry: 34 + 8 * (k - 1) }, roo: { x: fx[1] + out(1) * 16 * k, y: mid(1) + 92 + 8 * (k - 1) }, v: [0, -KICK_SPEED], awake: true, timer: 2, cool: 0, squash: 0, crouch: 0 },
       logo: { x: fx[2], y: mid(2) + 40 },
       hut: { x: fx[2] + out(2) * (hw + 58), y: mid(2) - 30 },
     };
@@ -559,6 +571,26 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
     ctx.drawImage(rooImg, -30, -98, 104, 100); ctx.restore();
     if (!k.awake) { ctx.fillStyle = '#fff'; ctx.font = "800 11px 'Baloo 2', sans-serif"; ctx.textAlign = 'center'; ctx.fillText('munch munch', r.x + 10, r.y - 22); }
   }
+  function drawCoach() {
+    const t = performance.now() / 1000, x = ball.x, y = ball.y, c = ctx;
+    const ph = (t % 1.6) / 1.6;
+    c.save();
+    c.strokeStyle = `rgba(255,138,92,${0.8 * (1 - ph)})`; c.lineWidth = 3; c.beginPath(); c.arc(x, y, BALL_R + 4 + ph * 22, 0, Math.PI * 2); c.stroke();
+    // ghost pull-back: a finger dot slides up from the ball, then the ball "fires" down
+    const pull = Math.min(1, (t % 2.4) / 1.4), show = (t % 2.4) < 1.6;
+    if (show) {
+      const gy = y - 10 - pull * 56;
+      c.strokeStyle = 'rgba(255,255,255,.85)'; c.lineWidth = 3; c.setLineDash([5, 6]); c.beginPath(); c.moveTo(x, y - BALL_R - 2); c.lineTo(x, gy); c.stroke(); c.setLineDash([]);
+      c.fillStyle = 'rgba(255,255,255,.9)'; c.beginPath(); c.arc(x, gy, 9, 0, Math.PI * 2); c.fill();
+      c.fillStyle = 'rgba(255,138,92,.9)'; c.beginPath(); c.moveTo(x - 9, y + 18 + pull * 6); c.lineTo(x + 9, y + 18 + pull * 6); c.lineTo(x, y + 32 + pull * 10); c.closePath(); c.fill();
+    }
+    const label = 'Drag back & let go', side = x > G.W / 2 ? -1 : 1;
+    c.font = "800 14px 'Baloo 2', sans-serif"; const w = c.measureText(label).width + 22, lx = side > 0 ? x + 26 : x - 26 - w, ly = y - 15;
+    c.fillStyle = 'rgba(47,90,34,.3)'; c.beginPath(); c.roundRect(lx + 3, ly + 3, w, 30, 15); c.fill();
+    c.fillStyle = '#fdf6e3'; c.beginPath(); c.roundRect(lx, ly, w, 30, 15); c.fill();
+    c.fillStyle = '#155e5e'; c.textAlign = 'left'; c.textBaseline = 'middle'; c.fillText(label, lx + 11, ly + 16); c.textBaseline = 'alphabetic';
+    c.restore();
+  }
   function draw() {
     if (!G) return;
     const y0 = scrollY / Z, y1 = (scrollY + VH) / Z;
@@ -568,6 +600,7 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
     if (state === 'sinking') drawBall(ball.x, ball.y, ball.scale); else if (state !== 'done') drawBall(ball.x, ball.y);
     drawFlag();
     if (state === 'aiming' && aim) drawAim();
+    if (state === 'ready' && shots === 0) drawCoach();
   }
 
   // ---------- loop ----------
@@ -590,6 +623,7 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
   requestAnimationFrame(frame);
   window.addEventListener('wheel', () => { follow = false; }, { passive: true });
   window.addEventListener('touchmove', () => { if (state !== 'aiming') follow = false; }, { passive: true });
+  $('teeoff').addEventListener('click', () => { window.scrollTo({ top: ball.y * Z - VH * 0.45, behavior: 'smooth' }); });
   window.__long = { ball, get state() { return state; }, get shots() { return shots; }, get G() { return G; }, test(ang, p) { if (state === 'ready') shoot(Math.cos(ang), Math.sin(ang), p); } };
 
   $('form').addEventListener('submit', (e) => {
